@@ -38,10 +38,8 @@
 
   var CHAT_JWT_KEY = "insider_chat_jwt";
 
-  // El origin de Auth se infiere del propio <script src>, así el mismo
-  // archivo sirve para auth.insider-mail.com y auth-staging.insider-mail.com
-  // sin tocar código. El mismo <script> tag puede llevar data-product para
-  // declarar explícitamente en qué producto está embebido.
+  // AUTH_ORIGIN siempre apunta a auth.insider-mail.com sin importar desde
+  // qué dominio se sirva este archivo (GitHub Pages, CDN, etc.)
   var AUTH_ORIGIN = "https://auth.insider-mail.com";
   var CURRENT_PID = null;
   var POSITIONS = { "bottom-left": 1, "bottom-right": 1, "top-left": 1, "top-right": 1, "center-left": 1, "center-right": 1 };
@@ -51,8 +49,9 @@
     var scripts = document.getElementsByTagName("script");
     var thisScript = scripts[scripts.length - 1];
     if (!thisScript) return;
-    var m = (thisScript.src || "").match(/^(https?:\/\/[^/]+)/);
-    if (m) AUTH_ORIGIN = m[1];
+    // Permitir override explícito vía data-auth-origin (para staging)
+    var authOverride = thisScript.getAttribute && thisScript.getAttribute("data-auth-origin");
+    if (authOverride) AUTH_ORIGIN = authOverride;
     CURRENT_PID = thisScript.getAttribute && thisScript.getAttribute("data-product");
     var pos = thisScript.getAttribute && thisScript.getAttribute("data-position");
     if (pos && POSITIONS[pos]) POSITION = pos;
