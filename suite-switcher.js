@@ -296,14 +296,22 @@
       var t = document.createElement("div");
       t.id = "isw-typing-indicator";
       t.className = "isw-typing";
-      t.innerHTML = "<span></span><span></span><span></span>";
+      t.setAttribute("style", "display:flex!important;align-items:center!important;gap:6px!important;padding:10px 14px!important;background:#0E1E3A!important;border:1.5px solid #C4AE70!important;border-radius:12px!important;width:fit-content!important;align-self:flex-start!important;margin:6px 0!important;box-shadow:0 4px 14px rgba(0,0,0,0.6)!important;z-index:9999!important");
+      t.innerHTML = "<span style='width:7px;height:7px;background:#C4AE70;border-radius:50%;display:inline-block;animation:iswBounce 1.2s infinite ease-in-out'></span>"
+        + "<span style='width:7px;height:7px;background:#C4AE70;border-radius:50%;display:inline-block;animation:iswBounce 1.2s infinite ease-in-out;animation-delay:0.2s'></span>"
+        + "<span style='width:7px;height:7px;background:#C4AE70;border-radius:50%;display:inline-block;animation:iswBounce 1.2s infinite ease-in-out;animation-delay:0.4s'></span>";
       chatBody.appendChild(t);
       chatBody.scrollTop = chatBody.scrollHeight;
     }
 
-    function hideTyping() {
+    function hideTypingDOM() {
       var t = document.getElementById("isw-typing-indicator");
       if (t && t.parentNode) t.parentNode.removeChild(t);
+    }
+
+    function hideTyping() {
+      isTypingState = false;
+      hideTypingDOM();
     }
 
     function renderQuickOpts() {
