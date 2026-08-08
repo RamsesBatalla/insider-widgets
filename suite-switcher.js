@@ -84,6 +84,7 @@
       ".isw-send{background:#C4AE70;color:#000;font-weight:800;border:none;padding:0 12px;border-radius:8px;cursor:pointer;font-size:11px;height:34px;white-space:nowrap;transition:background .15s;font-family:inherit}",
       ".isw-send:hover{background:#DFD0A4}",
       ".isw-send:disabled{opacity:.5;cursor:not-allowed}",
+      "@keyframes waWave{0%,60%,100%{transform:translateY(0);opacity:0.4}30%{transform:translateY(-4px);opacity:1}}",
       // Mobile responsive adaptive rules (iPhone, Android, small screens)
       "@media (max-width: 640px) {",
       "  #isw-suite-root{right:12px!important}",
@@ -296,10 +297,10 @@
       var t = document.createElement("div");
       t.id = "isw-typing-indicator";
       t.className = "isw-typing";
-      t.setAttribute("style", "display:flex!important;align-items:center!important;gap:6px!important;padding:10px 14px!important;background:#0E1E3A!important;border:1.5px solid #C4AE70!important;border-radius:12px!important;width:fit-content!important;align-self:flex-start!important;margin:6px 0!important;box-shadow:0 4px 14px rgba(0,0,0,0.6)!important;z-index:9999!important");
-      t.innerHTML = "<span style='width:7px;height:7px;background:#C4AE70;border-radius:50%;display:inline-block;animation:iswBounce 1.2s infinite ease-in-out'></span>"
-        + "<span style='width:7px;height:7px;background:#C4AE70;border-radius:50%;display:inline-block;animation:iswBounce 1.2s infinite ease-in-out;animation-delay:0.2s'></span>"
-        + "<span style='width:7px;height:7px;background:#C4AE70;border-radius:50%;display:inline-block;animation:iswBounce 1.2s infinite ease-in-out;animation-delay:0.4s'></span>";
+      t.setAttribute("style", "display:flex!important;align-items:center!important;gap:4px!important;padding:6px 12px!important;background:#132240!important;border:1px solid rgba(196,174,112,.2)!important;border-radius:10px!important;width:fit-content!important;align-self:flex-start!important;margin:2px 0 6px 0!important");
+      t.innerHTML = "<span style='width:5px;height:5px;background:#C4AE70;border-radius:50%;display:inline-block;animation:waWave 1.3s infinite ease-in-out'></span>"
+        + "<span style='width:5px;height:5px;background:#C4AE70;border-radius:50%;display:inline-block;animation:waWave 1.3s infinite ease-in-out;animation-delay:0.2s'></span>"
+        + "<span style='width:5px;height:5px;background:#C4AE70;border-radius:50%;display:inline-block;animation:waWave 1.3s infinite ease-in-out;animation-delay:0.4s'></span>";
       chatBody.appendChild(t);
       chatBody.scrollTop = chatBody.scrollHeight;
     }
@@ -391,7 +392,10 @@
                 var t = document.createElement("div");
                 t.id = "isw-typing-indicator";
                 t.className = "isw-typing";
-                t.innerHTML = "<span></span><span></span><span></span>";
+                t.setAttribute("style", "display:flex!important;align-items:center!important;gap:4px!important;padding:6px 12px!important;background:#132240!important;border:1px solid rgba(196,174,112,.2)!important;border-radius:10px!important;width:fit-content!important;align-self:flex-start!important;margin:2px 0 6px 0!important");
+                t.innerHTML = "<span style='width:5px;height:5px;background:#C4AE70;border-radius:50%;display:inline-block;animation:waWave 1.3s infinite ease-in-out'></span>"
+                  + "<span style='width:5px;height:5px;background:#C4AE70;border-radius:50%;display:inline-block;animation:waWave 1.3s infinite ease-in-out;animation-delay:0.2s'></span>"
+                  + "<span style='width:5px;height:5px;background:#C4AE70;border-radius:50%;display:inline-block;animation:waWave 1.3s infinite ease-in-out;animation-delay:0.4s'></span>";
                 chatBody.appendChild(t);
                 chatBody.scrollTop = chatBody.scrollHeight;
               }
