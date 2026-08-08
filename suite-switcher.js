@@ -329,21 +329,31 @@
     });
 
     var pollingTimer = null;
+    var lastRenderedMsgIds = "";
+
     function pollMessages() {
       if (!supSessionId) return;
-      fetch(AUTH_ORIGIN + "/api/support/ai/messages?session_id=" + encodeURIComponent(supSessionId))
+      fetch(AUTH_ORIGIN + "/api/support/messages?session_id=" + encodeURIComponent(supSessionId))
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(d) {
           if (d && d.messages && d.messages.length > 0) {
+            var msgFingerprint = d.messages.map(function(m){ return m.id; }).join(",");
             var existingCount = chatBody.querySelectorAll(".isw-msg").length;
-            if (d.messages.length > existingCount) {
+            if (msgFingerprint !== lastRenderedMsgIds) {
+              lastRenderedMsgIds = msgFingerprint;
               chatBody.innerHTML = "";
               d.messages.forEach(function(m) {
-                appendMsg(m.body, m.direction === "out" && m.sent_by !== "AI Support Agent");
+                // direction = 'in' (usuario escribiendo a soporte) -> isUser = true
+                // direction = 'out' (soporte o IA respondiendo al usuario) -> isUser = false
+                var isUserMsg = (m.direction === "in" || m.from === supSessionId);
+                appendMsg(m.body, isUserMsg);
               });
               if (!modal.classList.contains("isw-open")) {
-                unreadCount = d.messages.length - existingCount;
-                updateUnreadBadge();
+                var newCount = d.messages.length - existingCount;
+                if (newCount > 0) {
+                  unreadCount += newCount;
+                  updateUnreadBadge();
+                }
               }
             }
           }
