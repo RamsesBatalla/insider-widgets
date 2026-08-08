@@ -417,6 +417,14 @@
       if (!pollingTimer) pollingTimer = setInterval(pollMessages, 8000);
     }
 
+    function renderWelcomeIfEmpty() {
+      if (chatBody.querySelectorAll(".isw-msg").length === 0) {
+        var cleanProd = (productName || "INSIDER").toUpperCase();
+        appendMsg("¡Hola! 👋 Te doy la bienvenida al soporte de **" + cleanProd + "**.\n\n¿En qué te puedo ayudar hoy? Selecciona una opción rápida a continuación o escribe tu consulta.", false);
+      }
+    }
+
+    renderWelcomeIfEmpty();
     renderQuickOpts();
 
     function openModal() {
@@ -424,6 +432,7 @@
       toggleBtn.style.display = "none";
       unreadCount = 0;
       updateUnreadBadge();
+      renderWelcomeIfEmpty();
       startPolling();
       var swPanel = document.querySelector("#isw-suite-root .isw-panel");
       if (swPanel) swPanel.classList.remove("isw-open");
