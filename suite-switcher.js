@@ -260,6 +260,7 @@
     var inputEl = modal.querySelector("#isw-input");
     var sendBtn = modal.querySelector("#isw-send");
     var unreadCount = 0;
+    var isTypingState = false;
 
     function getLabel() { return document.getElementById("isw-sup-label"); }
 
@@ -290,7 +291,8 @@
     }
 
     function showTyping() {
-      hideTyping();
+      isTypingState = true;
+      hideTypingDOM();
       var t = document.createElement("div");
       t.id = "isw-typing-indicator";
       t.className = "isw-typing";
@@ -368,7 +370,6 @@
             var msgFingerprint = d.messages.map(function(m){ return m.id; }).join(",");
             var existingCount = chatBody.querySelectorAll(".isw-msg").length;
             if (msgFingerprint !== lastRenderedMsgIds) {
-              hideTyping();
               lastRenderedMsgIds = msgFingerprint;
               chatBody.innerHTML = "";
               d.messages.forEach(function(m) {
@@ -377,6 +378,15 @@
                 var isUserMsg = (m.direction === "in" || m.from === supSessionId);
                 appendMsg(m.body, isUserMsg);
               });
+              if (isTypingState) {
+                hideTypingDOM();
+                var t = document.createElement("div");
+                t.id = "isw-typing-indicator";
+                t.className = "isw-typing";
+                t.innerHTML = "<span></span><span></span><span></span>";
+                chatBody.appendChild(t);
+                chatBody.scrollTop = chatBody.scrollHeight;
+              }
               if (!modal.classList.contains("isw-open")) {
                 var newCount = d.messages.length - existingCount;
                 if (newCount > 0) {
