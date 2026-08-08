@@ -271,12 +271,37 @@
       else { lbl.textContent = "Soporte & Ayuda"; }
     }
 
+    function parseMarkdown(text) {
+      if (!text) return "";
+      var esc = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      esc = esc.replace(/\*\*(.*?)\*\*/g, "<strong style='color:#F2F5FC;font-weight:800'>$1</strong>");
+      esc = esc.replace(/__(.*?)__/g, "<strong style='color:#F2F5FC;font-weight:800'>$1</strong>");
+      esc = esc.replace(/\*(.*?)\*/g, "<em>$1</em>");
+      esc = esc.replace(/\n/g, "<br>");
+      return esc;
+    }
+
     function appendMsg(text, isUser) {
       var msg = document.createElement("div");
       msg.className = "isw-msg " + (isUser ? "isw-msg-out" : "isw-msg-in");
-      msg.textContent = text;
+      msg.innerHTML = isUser ? text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>") : parseMarkdown(text);
       chatBody.appendChild(msg);
       chatBody.scrollTop = chatBody.scrollHeight;
+    }
+
+    function showTyping() {
+      hideTyping();
+      var t = document.createElement("div");
+      t.id = "isw-typing-indicator";
+      t.className = "isw-typing";
+      t.innerHTML = "<span></span><span></span><span></span>";
+      chatBody.appendChild(t);
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }
+
+    function hideTyping() {
+      var t = document.getElementById("isw-typing-indicator");
+      if (t && t.parentNode) t.parentNode.removeChild(t);
     }
 
     function renderQuickOpts() {
@@ -294,6 +319,7 @@
       if (!txt) return;
       appendMsg(txt, true);
       optsContainer.style.display = "none";
+      showTyping();
       var payload = { session_id: supSessionId, product: CURRENT_PID, user_message: txt };
       if (identity && identity.email) payload.user_email = identity.email;
       sendBtn.disabled = true;
@@ -305,11 +331,13 @@
       .then(function(r) { return r.json(); })
       .then(function(d) {
         sendBtn.disabled = false;
+        hideTyping();
         if (d && d.reply) { appendMsg(d.reply, false); }
         else { appendMsg("Recibido. Un agente revisará tu consulta a la brevedad.", false); }
       })
       .catch(function() {
         sendBtn.disabled = false;
+        hideTyping();
         appendMsg("Mensaje enviado. Nuestro equipo lo revisará.", false);
       });
     }
@@ -340,6 +368,7 @@
             var msgFingerprint = d.messages.map(function(m){ return m.id; }).join(",");
             var existingCount = chatBody.querySelectorAll(".isw-msg").length;
             if (msgFingerprint !== lastRenderedMsgIds) {
+              hideTyping();
               lastRenderedMsgIds = msgFingerprint;
               chatBody.innerHTML = "";
               d.messages.forEach(function(m) {
