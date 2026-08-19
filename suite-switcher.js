@@ -5,6 +5,10 @@
 (function () {
   "use strict";
 
+  try {
+    if (localStorage.getItem("insider:hide_suite_widget") === "true") return;
+  } catch (_) {}
+
   if (window.__insiderSuiteSwitcherLoaded) return;
   window.__insiderSuiteSwitcherLoaded = true;
 
@@ -180,21 +184,6 @@
       panel.appendChild(item);
     });
 
-    if (window.PublicKeyCredential && typeof window.PublicKeyCredential === "function") {
-      var passkeyBtn = document.createElement("button");
-      passkeyBtn.className = "isw-item";
-      passkeyBtn.style.marginTop = "6px";
-      passkeyBtn.style.background = "linear-gradient(135deg, rgba(196,174,112,0.2) 0%, rgba(30,58,138,0.4) 100%)";
-      passkeyBtn.style.border = "1px solid rgba(196,174,112,0.4)";
-      passkeyBtn.style.borderRadius = "8px";
-      passkeyBtn.style.padding = "8px 10px";
-      passkeyBtn.innerHTML = '<span style="font-size:15px">🔑</span><span style="color:#DFD0A4;font-weight:700;font-size:.8rem">' + (LANG === "en" ? "Activate Face ID / Touch ID" : "Activar Face ID / Huella") + '</span>';
-      passkeyBtn.addEventListener("click", function() {
-        try { localStorage.setItem("trigger_passkey_reg", "true"); } catch(_) {}
-        location.href = AUTH_ORIGIN + "/suite?trigger_passkey_reg=1";
-      });
-      panel.appendChild(passkeyBtn);
-    }
     document.body.appendChild(panel);
 
     btn.addEventListener("click", function(e) {
@@ -220,11 +209,40 @@
     var opts = OPTIONS[pid] || OPTIONS["default"];
     var productName = (pid || "").replace("insider-", "").toUpperCase();
 
-    var supSessionId;
-    try { supSessionId = localStorage.getItem("insider_sup_session_id"); } catch(_) {}
-    if (!supSessionId || supSessionId.length > 28) {
-      supSessionId = "sup_" + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
-      try { localStorage.setItem("insider_sup_session_id", supSessionId); } catch(_) {}
+    var TTL_24H = 24 * 60 * 60 * 1000;
+    var supSessionId = null;
+    var supSessionAt = 0;
+    var hasSavedCase = false;
+    var caseDecided = false;
+
+    try {
+      supSessionId = localStorage.getItem("insider_sup_session_id");
+      supSessionAt = parseInt(localStorage.getItem("insider_sup_session_at") || "0", 10);
+    } catch(_) {}
+
+    if (supSessionId && supSessionAt > 0) {
+      var age = Date.now() - supSessionAt;
+      if (age >= TTL_24H) {
+        supSessionId = null;
+        supSessionAt = 0;
+        try {
+          localStorage.removeItem("insider_sup_session_id");
+          localStorage.removeItem("insider_sup_session_at");
+        } catch(_) {}
+      } else {
+        hasSavedCase = true;
+      }
+    }
+
+    function touchSession() {
+      if (!supSessionId || supSessionId.length > 28) {
+        supSessionId = "sup_" + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+      }
+      supSessionAt = Date.now();
+      try {
+        localStorage.setItem("insider_sup_session_id", supSessionId);
+        localStorage.setItem("insider_sup_session_at", supSessionAt.toString());
+      } catch(_) {}
     }
 
     var root = document.createElement("div");
@@ -247,10 +265,17 @@
       + '<span>Atención Inteligente · ' + productName + '</span>'
       + '<span style="color:#34D399;font-weight:700">🤖 IA Activa</span>'
       + '</div>'
+      + '<div class="isw-resume-card" id="isw-resume-card" style="display:none;padding:20px 14px;background:#132240;border:1px solid rgba(196,174,112,.3);border-radius:12px;margin:12px 0;text-align:center;color:#E8EEFF">'
+      + '<div style="font-size:15px;font-weight:700;margin-bottom:6px">¿Deseas continuar con tu caso anterior?</div>'
+      + '<div style="font-size:13px;color:#94A3B8;margin-bottom:16px;line-height:1.4">Tienes una consulta guardada de las últimas 24 horas.</div>'
+      + '<div style="display:flex;flex-direction:column;gap:8px">'
+      + '<button class="isw-btn-resume" id="isw-resume-yes" style="width:100%;padding:11px;background:#C4AE70;color:#091224;border:0;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Continuar con mi caso</button>'
+      + '<button class="isw-btn-new" id="isw-resume-no" style="width:100%;padding:11px;background:transparent;color:#94A3B8;border:1px solid rgba(148,163,184,.3);border-radius:8px;font-size:13px;cursor:pointer">Iniciar algo nuevo</button>'
+      + '</div></div>'
       + '<div class="isw-chat-body" id="isw-chat-body"></div>'
-      + '<div class="isw-footer">'
+      + '<div class="isw-footer" id="isw-footer">'
       + '<div class="isw-opts" id="isw-opts"></div>'
-      + '<div class="isw-input-row">'
+      + '<div class="isw-input-row" id="isw-input-row">'
       + '<textarea class="isw-textarea" id="isw-input" placeholder="Escribe tu consulta..."></textarea>'
       + '<button class="isw-send" id="isw-send">Enviar</button>'
       + '</div></div>';
@@ -260,8 +285,44 @@
     var optsContainer = modal.querySelector("#isw-opts");
     var inputEl = modal.querySelector("#isw-input");
     var sendBtn = modal.querySelector("#isw-send");
+    var resumeCard = modal.querySelector("#isw-resume-card");
+    var footerEl = modal.querySelector("#isw-footer");
+    var resumeYesBtn = modal.querySelector("#isw-resume-yes");
+    var resumeNoBtn = modal.querySelector("#isw-resume-no");
     var unreadCount = 0;
     var isTypingState = false;
+
+    if (resumeYesBtn) {
+      resumeYesBtn.addEventListener("click", function() {
+        caseDecided = true;
+        if (resumeCard) resumeCard.style.display = "none";
+        if (chatBody) chatBody.style.display = "flex";
+        if (footerEl) footerEl.style.display = "block";
+        touchSession();
+        pollMessages();
+        startPolling();
+      });
+    }
+
+    if (resumeNoBtn) {
+      resumeNoBtn.addEventListener("click", function() {
+        caseDecided = true;
+        hasSavedCase = false;
+        supSessionId = null;
+        supSessionAt = 0;
+        try {
+          localStorage.removeItem("insider_sup_session_id");
+          localStorage.removeItem("insider_sup_session_at");
+        } catch(_) {}
+        chatBody.innerHTML = "";
+        lastRenderedMsgIds = "";
+        if (resumeCard) resumeCard.style.display = "none";
+        if (chatBody) chatBody.style.display = "flex";
+        if (footerEl) footerEl.style.display = "block";
+        renderWelcomeIfEmpty();
+        renderQuickOpts();
+      });
+    }
 
     function getLabel() { return document.getElementById("isw-sup-label"); }
 
@@ -328,6 +389,7 @@
 
     function sendUserMsg(txt) {
       if (!txt) return;
+      touchSession();
       appendMsg(txt, true);
       optsContainer.style.display = "none";
       showTyping();
@@ -376,14 +438,13 @@
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(d) {
           if (d && d.messages && d.messages.length > 0) {
+            touchSession();
             var msgFingerprint = d.messages.map(function(m){ return m.id; }).join(",");
             var existingCount = chatBody.querySelectorAll(".isw-msg").length;
             if (msgFingerprint !== lastRenderedMsgIds) {
               lastRenderedMsgIds = msgFingerprint;
               chatBody.innerHTML = "";
               d.messages.forEach(function(m) {
-                // direction = 'in' (usuario escribiendo a soporte) -> isUser = true
-                // direction = 'out' (soporte o IA respondiendo al usuario) -> isUser = false
                 var isUserMsg = (m.direction === "in" || m.from === supSessionId);
                 appendMsg(m.body, isUserMsg);
               });
@@ -424,16 +485,26 @@
       }
     }
 
-    renderWelcomeIfEmpty();
-    renderQuickOpts();
-
     function openModal() {
       modal.classList.add("isw-open");
       toggleBtn.style.display = "none";
       unreadCount = 0;
       updateUnreadBadge();
-      renderWelcomeIfEmpty();
-      startPolling();
+
+      if (hasSavedCase && !caseDecided) {
+        if (resumeCard) resumeCard.style.display = "block";
+        if (chatBody) chatBody.style.display = "none";
+        if (footerEl) footerEl.style.display = "none";
+      } else {
+        if (resumeCard) resumeCard.style.display = "none";
+        if (chatBody) chatBody.style.display = "flex";
+        if (footerEl) footerEl.style.display = "block";
+        if (!hasSavedCase) {
+          renderWelcomeIfEmpty();
+          renderQuickOpts();
+        }
+        startPolling();
+      }
       var swPanel = document.querySelector("#isw-suite-root .isw-panel");
       if (swPanel) swPanel.classList.remove("isw-open");
     }
@@ -456,79 +527,15 @@
     { pid: "insider-invoices", name: "Insider Invoices", activate: "https://invoices.insider-mail.com",         available: true, theme: "navy"  },
     { pid: "insider-chat",     name: "Insider Chat",     activate: "https://chat.insider-mail.com",             available: true, theme: "navy"  },
     { pid: "insider-iron",     name: "Insider Iron",     activate: "https://iron.insider-mail.com/hub",         available: true, theme: "amber" },
-    { pid: "insider-ads",      name: "Insider Ads",      activate: "https://ads.insider-mail.com/",           available: true, theme: "gold"  }
+    { pid: "insider-ads",      name: "Insider Ads",      activate: "https://ads.insider-mail.com/",           available: true, theme: "gold"  },
+    { pid: "insider-ship",     name: "Ship n Cargo",     activate: "https://insider-mail.com/ship/",          available: true, theme: "navy"  }
   ];
 
   // ── Banner promocional de biometría en todos los servicios ─────────────────
   var CAMPAIGN_END_TIMESTAMP = 1786740782000; // 7 días exactamente desde hoy (14 de Agosto de 2026)
 
   function renderPasskeyAnnouncementBanner() {
-    if (!window.PublicKeyCredential || typeof window.PublicKeyCredential !== "function") return;
-    if (Date.now() >= CAMPAIGN_END_TIMESTAMP) return; // Expira automáticamente a los 7 días
-    if (document.getElementById("isw-passkey-banner")) return;
-
-    try {
-      if (localStorage.getItem("isw_passkey_this_device_enrolled") === "true" ||
-          localStorage.getItem("passkey_enrolled_global") === "true" ||
-          localStorage.getItem("passkey_enrolled_" + location.host) === "true") {
-        return; // Ya tiene biometría configurada. Ocultar banner por completo.
-      }
-      var dismissedUntil = parseInt(localStorage.getItem("isw_passkey_banner_dismissed") || "0", 10);
-      if (Date.now() < dismissedUntil) return;
-    } catch(_) {}
-
-    var banner = document.createElement("div");
-    banner.id = "isw-passkey-banner";
-    banner.style.cssText = "position:fixed;bottom:20px;left:50%;transform:translateX(-50%);width:calc(100% - 24px);max-width:680px;background:linear-gradient(135deg,#091326 0%,#0E1E3A 100%);border:1.5px solid #C4AE70;border-radius:14px;box-shadow:0 12px 36px rgba(0,0,0,0.65),0 0 16px rgba(196,174,112,0.15);padding:10px 14px;z-index:2147483635!important;color:#E8EEFF;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-family:Montserrat,system-ui,sans-serif";
-
-    var isES = (LANG === "es");
-    banner.innerHTML = '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:200px">'
-      + '<div class="isw-pk-icon" style="width:34px;height:34px;border-radius:8px;background:rgba(196,174,112,0.15);border:1px solid rgba(196,174,112,0.3);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">📱</div>'
-      + '<div style="min-width:0;flex:1">'
-      + '<div class="isw-pk-title" style="font-size:11.5px;font-weight:700;color:#F2F5FC;display:flex;align-items:center;gap:5px;flex-wrap:wrap">'
-      + '<span>' + (isES ? '✨ Novedad: Activa Face ID / Huella en este equipo' : '✨ New: Enable Face ID / Touch ID here') + '</span>'
-      + '<span style="background:rgba(52,211,153,0.15);color:#34D399;font-size:8.5px;font-weight:800;padding:1px 5px;border-radius:4px;border:1px solid rgba(52,211,153,0.3)">1-Clic</span>'
-      + '<span id="isw-passkey-timer" style="font-size:9px;color:#C4AE70;background:rgba(196,174,112,0.12);border:1px solid rgba(196,174,112,0.25);padding:1px 5px;border-radius:4px;font-family:monospace;white-space:nowrap">⏳ 7d</span>'
-      + '</div>'
-      + '<div class="isw-pk-sub" style="font-size:9.5px;color:#94A3B8;margin-top:1px;line-height:1.25">'
-      + (isES ? 'Entra en 1 segundo sin pedir enlaces por correo · <span style="color:#C4AE70">*Vinculado a este equipo.</span>' : 'Sign in 1-sec without email links · <span style="color:#C4AE70">*Links to this device.</span>')
-      + '</div></div></div>'
-      + '<div style="display:flex;align-items:center;gap:6px;margin-left:auto">'
-      + '<button type="button" id="isw-passkey-act-btn" style="background:#C4AE70;color:#000;border:none;border-radius:7px;padding:6px 11px;font-weight:800;font-size:10.5px;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px rgba(196,174,112,0.3)">' + (isES ? '🔑 Activar' : '🔑 Enable') + '</button>'
-      + '<button type="button" id="isw-passkey-close-btn" style="background:none;border:1px solid rgba(196,174,112,0.3);color:#C4AE70;border-radius:6px;width:22px;height:22px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>'
-      + '</div>';
-
-    document.body.appendChild(banner);
-
-    function updateTimer() {
-      var rem = CAMPAIGN_END_TIMESTAMP - Date.now();
-      if (rem <= 0) {
-        if (banner.parentNode) banner.parentNode.removeChild(banner);
-        return;
-      }
-      var days = Math.floor(rem / (1000 * 60 * 60 * 24));
-      var hours = Math.floor((rem % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      var mins = Math.floor((rem % (1000 * 60 * 60)) / (1000 * 60));
-      var secs = Math.floor((rem % (1000 * 60)) / 1000);
-      var timerEl = document.getElementById("isw-passkey-timer");
-      if (timerEl) {
-        timerEl.textContent = "⏳ " + (days > 0 ? days + "d " : "") + (hours < 10 ? "0" : "") + hours + "h " + (mins < 10 ? "0" : "") + mins + "m " + (secs < 10 ? "0" : "") + secs + "s";
-      }
-    }
-    setInterval(updateTimer, 1000);
-    updateTimer();
-
-    document.getElementById("isw-passkey-act-btn").addEventListener("click", function() {
-      try { localStorage.setItem("trigger_passkey_reg", "true"); } catch(_) {}
-      location.href = AUTH_ORIGIN + "/suite?trigger_passkey_reg=1";
-    });
-
-    document.getElementById("isw-passkey-close-btn").addEventListener("click", function() {
-      try {
-        localStorage.setItem("isw_passkey_banner_dismissed", (Date.now() + 7 * 24 * 3600 * 1000).toString());
-      } catch(_) {}
-      banner.style.display = "none";
-    });
+    return; // Passkey/Biometría trasladado exclusivamente a Configuración Avanzada modal
   }
 
   // ── 1. Renderizar widgets ─────────────────────
@@ -536,8 +543,11 @@
   try {
     var fallbackProducts = FALLBACK.filter(function(p) { return p.pid !== CURRENT_PID; });
     renderSuite(fallbackProducts, null);
+    if (localStorage.getItem("insider:hide_suite_widget") === "true") {
+      var suiteRoot = document.getElementById("isw-suite-root");
+      if (suiteRoot) suiteRoot.style.display = "none";
+    }
   } catch(e) { console.error("[isw] suite error:", e); }
-  try { renderPasskeyAnnouncementBanner(); } catch(e) { console.error("[isw] passkey banner error:", e); }
 
   // ── 2. Enriquecer con datos reales de sesión ───────────────────────────────
   resolveSession(function(licenses, token, hasWebAuthn) {
@@ -547,8 +557,6 @@
         localStorage.setItem("passkey_enrolled_global", "true");
         localStorage.setItem("passkey_enrolled_" + location.host, "true");
       } catch(_) {}
-      var b = document.getElementById("isw-passkey-banner");
-      if (b) b.remove();
     }
     if (!token && !licenses) return;
     if (token) {
