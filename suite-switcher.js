@@ -1,6 +1,6 @@
 /*
  * suite-switcher.js — Insider Suite · widget de cambio rápido entre productos + chat de soporte.
- * v2.0 — Sin Shadow DOM, CSS prefijado con isw- para evitar conflictos.
+ * v2.1 — Soporte bilingüe automático (ES / EN) sincronizado con Configuración Avanzada de la Suite.
  */
 (function () {
   "use strict";
@@ -37,12 +37,77 @@
     CURRENT_PID = slug === "chat" ? "insider-chat" : (slug ? "insider-" + slug : "insider-suite");
   }
 
+  // ── Idioma & Diccionario i18n ─────────────────────────────────────────────
+  var LANG = "es";
+  try {
+    var savedLang = localStorage.getItem("insider:lang");
+    if (savedLang === "en" || savedLang === "es") LANG = savedLang;
+  } catch (_) {}
+
+  var I18N = {
+    es: {
+      suiteLabel: "Tu suite",
+      supportLabel: "Soporte & Ayuda",
+      supportShort: "Soporte",
+      supportTitle: "💬 Chat de Soporte Insider",
+      supportSub: "Atención Inteligente · ",
+      aiActive: "🤖 IA Activa",
+      resumeTitle: "¿Deseas continuar con tu caso anterior?",
+      resumeSub: "Tienes una consulta guardada de las últimas 24 horas.",
+      resumeYes: "Continuar con mi caso",
+      resumeNo: "Iniciar algo nuevo",
+      inputPlaceholder: "Escribe tu consulta...",
+      sendBtn: "Enviar",
+      welcomeMsg: function(cleanProd) {
+        return "¡Hola! 👋 Te doy la bienvenida al soporte de **" + cleanProd + "**.\n\n¿En qué te puedo ayudar hoy? Selecciona una opción rápida a continuación o escribe tu consulta.";
+      },
+      fallbackAck: "Recibido. Un agente revisará tu consulta a la brevedad.",
+      fallbackNet: "Mensaje enviado. Nuestro equipo lo revisará.",
+      options: {
+        "insider-call":    ["📞 Reportar problema con llamada o IVR","⚙️ Duda de configuración de número","👥 Asistencia con permisos de equipo","💬 Hablar con soporte humano"],
+        "insider-receipt": ["📄 Duda con lectura de recibo","💳 Problema de facturación","🏢 Configuración de empresa / merchant","💬 Hablar con soporte humano"],
+        "insider-chat":    ["💬 Problema enviando WhatsApp / SMS","📥 Asignación de inbox","⚙️ Configuración de canal","💬 Hablar con soporte humano"],
+        "insider-iron":    ["⚙️ Incidencia técnica de sistema","📷 Registro de fotos","📋 Plan de mantenimiento","💬 Hablar con soporte humano"],
+        "default":         ["❓ Pregunta general","🐞 Reportar una incidencia / error","💬 Hablar con soporte humano"]
+      }
+    },
+    en: {
+      suiteLabel: "Your suite",
+      supportLabel: "Support & Help",
+      supportShort: "Support",
+      supportTitle: "💬 Insider Support Chat",
+      supportSub: "Smart Support · ",
+      aiActive: "🤖 AI Active",
+      resumeTitle: "Do you want to continue with your previous case?",
+      resumeSub: "You have a saved query from the last 24 hours.",
+      resumeYes: "Continue with my case",
+      resumeNo: "Start something new",
+      inputPlaceholder: "Type your message...",
+      sendBtn: "Send",
+      welcomeMsg: function(cleanProd) {
+        return "Hello! 👋 Welcome to **" + cleanProd + "** support.\n\nHow can we help you today? Choose a quick option below or type your inquiry.";
+      },
+      fallbackAck: "Received. An agent will review your inquiry shortly.",
+      fallbackNet: "Message sent. Our team will review it shortly.",
+      options: {
+        "insider-call":    ["📞 Report call or IVR issue","⚙️ Number configuration inquiry","👥 Team permissions assistance","💬 Speak with human support"],
+        "insider-receipt": ["📄 Receipt reading inquiry","💳 Billing issue","🏢 Merchant / company configuration","💬 Speak with human support"],
+        "insider-chat":    ["💬 WhatsApp / SMS sending issue","📥 Inbox assignment","⚙️ Channel setup","💬 Speak with human support"],
+        "insider-iron":    ["⚙️ System technical incident","📷 Photo registry","📋 Maintenance plan","💬 Speak with human support"],
+        "default":         ["❓ General question","🐞 Report an issue / bug","💬 Speak with human support"]
+      }
+    }
+  };
+
+  function t() {
+    return I18N[LANG] || I18N.es;
+  }
+
   // ── Inyectar CSS global prefijado (una sola vez) ──────────────────────────
   if (!document.getElementById("isw-global-style")) {
     var edges = POSITION.split("-");
     var vSide = edges[0], hSide = edges[1];
     var isCenter = vSide === "center";
-    var panelOpenDir = (vSide === "top") ? "top:58px" : "bottom:58px";
     var vPos = isCenter ? "top:50%;transform:translateY(-50%)" : (vSide + ":" + (20 + (vSide === "bottom" ? OFFSET_BOTTOM : 0)) + "px");
 
     var supBottom = (CURRENT_PID === "insider-chat" && OFFSET_BOTTOM === 0) ? 85 : (16 + OFFSET_BOTTOM);
@@ -51,7 +116,6 @@
     var css = document.createElement("style");
     css.id = "isw-global-style";
     css.textContent = [
-      // Suite switcher
       "#isw-suite-root{position:fixed;" + vPos + ";" + hSide + ":20px;z-index:2147483640!important;font-family:Montserrat,system-ui,sans-serif}",
       "#isw-suite-root *{box-sizing:border-box}",
       ".isw-btn{width:48px;height:48px;border-radius:50%;background:#0E1E3A;border:2px solid #C4AE70;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.4);padding:0;outline:none}",
@@ -63,7 +127,6 @@
       ".isw-hdr:hover{text-decoration:underline}",
       ".isw-item{display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;color:#E8EEFF;font-size:.86rem;font-weight:600;cursor:pointer;background:none;border:none;text-align:left;width:100%;font-family:inherit}",
       ".isw-item:hover{background:rgba(196,174,112,.12)}",
-      // Support widget
       "#isw-sup-root{position:fixed;bottom:" + supBottom + "px;right:20px;z-index:2147483647!important;font-family:Montserrat,system-ui,sans-serif}",
       "#isw-sup-root *{box-sizing:border-box}",
       ".isw-sup-btn{height:44px;padding:0 18px;border-radius:22px;background:#0E1E3A;border:1.5px solid #C4AE70;color:#E8EEFF;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,.4);outline:none;font-family:inherit}",
@@ -89,17 +152,10 @@
       ".isw-send:hover{background:#DFD0A4}",
       ".isw-send:disabled{opacity:.5;cursor:not-allowed}",
       "@keyframes waWave{0%,60%,100%{transform:translateY(0);opacity:0.4}30%{transform:translateY(-4px);opacity:1}}",
-      // Mobile responsive adaptive rules (iPhone, Android, small screens)
       "@media (max-width: 640px) {",
       "  #isw-suite-root{right:12px!important}",
       "  .isw-panel{position:fixed!important;top:auto!important;transform:none!important;bottom:70px!important;right:12px!important;left:12px!important;width:auto!important;max-width:calc(100vw - 24px)!important;max-height:calc(85vh - 65px)!important;overflow-y:auto!important;box-shadow:0 16px 48px rgba(0,0,0,0.85)!important;border:1.5px solid rgba(196,174,112,0.5)!important}",
       "  .isw-sup-modal{position:fixed!important;top:12px!important;bottom:65px!important;left:12px!important;right:12px!important;width:auto!important;height:auto!important;max-width:none!important}",
-      "  #isw-passkey-banner{bottom:10px!important;left:10px!important;right:10px!important;transform:none!important;width:auto!important;max-width:none!important;padding:6px 10px!important;border-radius:10px!important;gap:6px!important}",
-      "  #isw-passkey-banner .isw-pk-icon{width:26px!important;height:26px!important;font-size:14px!important;border-radius:6px!important}",
-      "  #isw-passkey-banner .isw-pk-title{font-size:11px!important;gap:4px!important}",
-      "  #isw-passkey-banner .isw-pk-sub{font-size:9px!important;margin-top:1px!important}",
-      "  #isw-passkey-act-btn{padding:4px 8px!important;font-size:10px!important;border-radius:6px!important}",
-      "  #isw-passkey-close-btn{width:20px!important;height:20px!important;font-size:10px!important}",
       "}"
     ].join("\n");
     document.head.appendChild(css);
@@ -124,7 +180,16 @@
     }
     fetch(AUTH_ORIGIN + "/api/session/whoami", { credentials: "include" })
       .then(function(r) { return r.ok ? r.json() : null; })
-      .then(function(d) { cb((d && d.licenses) || null, null, !!(d && d.has_webauthn)); })
+      .then(function(d) {
+        if (d && d.preferred_lang && (d.preferred_lang === "es" || d.preferred_lang === "en")) {
+          if (LANG !== d.preferred_lang) {
+            LANG = d.preferred_lang;
+            try { localStorage.setItem("insider:lang", LANG); } catch(_) {}
+            applyWidgetTranslations();
+          }
+        }
+        cb((d && d.licenses) || null, null, !!(d && d.has_webauthn));
+      })
       .catch(function() { cb(null, null, false); });
   }
 
@@ -134,16 +199,12 @@
     amber: { base: "#15110D", tri: "#A3681E" }
   };
   function miniLogo(p) {
-    var t = THEMES[p.theme] || THEMES.navy;
+    var th = THEMES[p.theme] || THEMES.navy;
     return '<svg width="26" height="26" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">'
-      + '<rect x="8" y="8" width="104" height="104" rx="20" fill="' + t.base + '"/>'
-      + '<polygon points="60,8 112,8 112,44" fill="' + t.tri + '"/>'
+      + '<rect x="8" y="8" width="104" height="104" rx="20" fill="' + th.base + '"/>'
+      + '<polygon points="60,8 112,8 112,44" fill="' + th.tri + '"/>'
       + '</svg>';
   }
-
-  var LANG = "es";
-  try { LANG = localStorage.getItem("insider:lang") || "es"; } catch(_) {}
-  var SUITE_LABEL = LANG === "en" ? "Your suite" : "Tu suite";
 
   // ── Mi Suite widget ───────────────────────────────────────────────────────
   function renderSuite(products, token) {
@@ -155,7 +216,7 @@
 
     var btn = document.createElement("button");
     btn.className = "isw-btn";
-    btn.setAttribute("aria-label", SUITE_LABEL);
+    btn.setAttribute("aria-label", t().suiteLabel);
     btn.setAttribute("aria-haspopup", "true");
     btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#C4AE70" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
       + '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>'
@@ -168,13 +229,15 @@
 
     var hdr = document.createElement("a");
     hdr.className = "isw-hdr";
+    hdr.id = "isw-suite-hdr";
     hdr.href = AUTH_ORIGIN + "/suite";
-    hdr.textContent = SUITE_LABEL;
+    hdr.textContent = t().suiteLabel;
     panel.appendChild(hdr);
 
     products.forEach(function(p) {
       var item = document.createElement("button");
       item.className = "isw-item";
+      item.setAttribute("data-pid", p.pid);
       item.innerHTML = miniLogo(p) + "<span>" + p.name + "</span>";
       item.addEventListener("click", function() {
         var url = p.activate;
@@ -199,15 +262,8 @@
   function renderSupport(pid, identity) {
     if (document.getElementById("isw-sup-root")) return;
 
-    var OPTIONS = {
-      "insider-call":    ["📞 Reportar problema con llamada o IVR","⚙️ Duda de configuración de número","👥 Asistencia con permisos de equipo","💬 Hablar con soporte humano"],
-      "insider-receipt": ["📄 Duda con lectura de recibo","💳 Problema de facturación","🏢 Configuración de empresa / merchant","💬 Hablar con soporte humano"],
-      "insider-chat":    ["💬 Problema enviando WhatsApp / SMS","📥 Asignación de inbox","⚙️ Configuración de canal","💬 Hablar con soporte humano"],
-      "insider-iron":    ["⚙️ Incidencia técnica de sistema","📷 Registro de fotos","📋 Plan de mantenimiento","💬 Hablar con soporte humano"],
-      "default":         ["❓ Pregunta general","🐞 Reportar una incidencia / error","💬 Hablar con soporte humano"]
-    };
-    var opts = OPTIONS[pid] || OPTIONS["default"];
     var productName = (pid || "").replace("insider-", "").toUpperCase();
+    var curI18n = t();
 
     var TTL_24H = 24 * 60 * 60 * 1000;
     var supSessionId = null;
@@ -252,32 +308,32 @@
     var toggleBtn = document.createElement("button");
     toggleBtn.className = "isw-sup-btn";
     toggleBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C4AE70" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'
-      + '<span id="isw-sup-label">Soporte & Ayuda</span>';
+      + '<span id="isw-sup-label">' + curI18n.supportLabel + '</span>';
     root.appendChild(toggleBtn);
 
     var modal = document.createElement("div");
     modal.className = "isw-sup-modal";
     modal.innerHTML = '<div class="isw-sup-title">'
-      + '<span>💬 Chat de Soporte Insider</span>'
+      + '<span id="isw-sup-modal-title">' + curI18n.supportTitle + '</span>'
       + '<button class="isw-sup-close">✕</button>'
       + '</div>'
       + '<div class="isw-sup-sub">'
-      + '<span>Atención Inteligente · ' + productName + '</span>'
-      + '<span style="color:#34D399;font-weight:700">🤖 IA Activa</span>'
+      + '<span id="isw-sup-modal-sub">' + curI18n.supportSub + productName + '</span>'
+      + '<span id="isw-sup-ai-badge" style="color:#34D399;font-weight:700">' + curI18n.aiActive + '</span>'
       + '</div>'
       + '<div class="isw-resume-card" id="isw-resume-card" style="display:none;padding:20px 14px;background:#132240;border:1px solid rgba(196,174,112,.3);border-radius:12px;margin:12px 0;text-align:center;color:#E8EEFF">'
-      + '<div style="font-size:15px;font-weight:700;margin-bottom:6px">¿Deseas continuar con tu caso anterior?</div>'
-      + '<div style="font-size:13px;color:#94A3B8;margin-bottom:16px;line-height:1.4">Tienes una consulta guardada de las últimas 24 horas.</div>'
+      + '<div id="isw-resume-title" style="font-size:15px;font-weight:700;margin-bottom:6px">' + curI18n.resumeTitle + '</div>'
+      + '<div id="isw-resume-sub" style="font-size:13px;color:#94A3B8;margin-bottom:16px;line-height:1.4">' + curI18n.resumeSub + '</div>'
       + '<div style="display:flex;flex-direction:column;gap:8px">'
-      + '<button class="isw-btn-resume" id="isw-resume-yes" style="width:100%;padding:11px;background:#C4AE70;color:#091224;border:0;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Continuar con mi caso</button>'
-      + '<button class="isw-btn-new" id="isw-resume-no" style="width:100%;padding:11px;background:transparent;color:#94A3B8;border:1px solid rgba(148,163,184,.3);border-radius:8px;font-size:13px;cursor:pointer">Iniciar algo nuevo</button>'
+      + '<button class="isw-btn-resume" id="isw-resume-yes" style="width:100%;padding:11px;background:#C4AE70;color:#091224;border:0;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">' + curI18n.resumeYes + '</button>'
+      + '<button class="isw-btn-new" id="isw-resume-no" style="width:100%;padding:11px;background:transparent;color:#94A3B8;border:1px solid rgba(148,163,184,.3);border-radius:8px;font-size:13px;cursor:pointer">' + curI18n.resumeNo + '</button>'
       + '</div></div>'
       + '<div class="isw-chat-body" id="isw-chat-body"></div>'
       + '<div class="isw-footer" id="isw-footer">'
       + '<div class="isw-opts" id="isw-opts"></div>'
       + '<div class="isw-input-row" id="isw-input-row">'
-      + '<textarea class="isw-textarea" id="isw-input" placeholder="Escribe tu consulta..."></textarea>'
-      + '<button class="isw-send" id="isw-send">Enviar</button>'
+      + '<textarea class="isw-textarea" id="isw-input" placeholder="' + curI18n.inputPlaceholder + '"></textarea>'
+      + '<button class="isw-send" id="isw-send">' + curI18n.sendBtn + '</button>'
       + '</div></div>';
     document.body.appendChild(modal);
 
@@ -329,9 +385,10 @@
     function updateUnreadBadge() {
       var lbl = getLabel();
       if (!lbl) return;
-      if (modal.classList.contains("isw-open")) { unreadCount = 0; lbl.textContent = "Soporte & Ayuda"; return; }
-      if (unreadCount > 0) { lbl.textContent = "Soporte (" + unreadCount + ")"; }
-      else { lbl.textContent = "Soporte & Ayuda"; }
+      var activeT = t();
+      if (modal.classList.contains("isw-open")) { unreadCount = 0; lbl.textContent = activeT.supportLabel; return; }
+      if (unreadCount > 0) { lbl.textContent = activeT.supportShort + " (" + unreadCount + ")"; }
+      else { lbl.textContent = activeT.supportLabel; }
     }
 
     function parseMarkdown(text) {
@@ -355,20 +412,20 @@
     function showTyping() {
       isTypingState = true;
       hideTypingDOM();
-      var t = document.createElement("div");
-      t.id = "isw-typing-indicator";
-      t.className = "isw-typing";
-      t.setAttribute("style", "display:flex!important;align-items:center!important;gap:4px!important;padding:6px 12px!important;background:#132240!important;border:1px solid rgba(196,174,112,.2)!important;border-radius:10px!important;width:fit-content!important;align-self:flex-start!important;margin:2px 0 6px 0!important");
-      t.innerHTML = "<span style='width:5px;height:5px;background:#C4AE70;border-radius:50%;display:inline-block;animation:waWave 1.3s infinite ease-in-out'></span>"
+      var tEl = document.createElement("div");
+      tEl.id = "isw-typing-indicator";
+      tEl.className = "isw-typing";
+      tEl.setAttribute("style", "display:flex!important;align-items:center!important;gap:4px!important;padding:6px 12px!important;background:#132240!important;border:1px solid rgba(196,174,112,.2)!important;border-radius:10px!important;width:fit-content!important;align-self:flex-start!important;margin:2px 0 6px 0!important");
+      tEl.innerHTML = "<span style='width:5px;height:5px;background:#C4AE70;border-radius:50%;display:inline-block;animation:waWave 1.3s infinite ease-in-out'></span>"
         + "<span style='width:5px;height:5px;background:#C4AE70;border-radius:50%;display:inline-block;animation:waWave 1.3s infinite ease-in-out;animation-delay:0.2s'></span>"
         + "<span style='width:5px;height:5px;background:#C4AE70;border-radius:50%;display:inline-block;animation:waWave 1.3s infinite ease-in-out;animation-delay:0.4s'></span>";
-      chatBody.appendChild(t);
+      chatBody.appendChild(tEl);
       chatBody.scrollTop = chatBody.scrollHeight;
     }
 
     function hideTypingDOM() {
-      var t = document.getElementById("isw-typing-indicator");
-      if (t && t.parentNode) t.parentNode.removeChild(t);
+      var tEl = document.getElementById("isw-typing-indicator");
+      if (tEl && tEl.parentNode) tEl.parentNode.removeChild(tEl);
     }
 
     function hideTyping() {
@@ -378,7 +435,9 @@
 
     function renderQuickOpts() {
       optsContainer.innerHTML = "";
-      opts.forEach(function(o) {
+      var activeT = t();
+      var curOpts = (activeT.options && activeT.options[pid]) || activeT.options["default"];
+      curOpts.forEach(function(o) {
         var btnOpt = document.createElement("button");
         btnOpt.className = "isw-opt";
         btnOpt.textContent = o;
@@ -406,12 +465,12 @@
         sendBtn.disabled = false;
         hideTyping();
         if (d && d.reply) { appendMsg(d.reply, false); }
-        else { appendMsg("Recibido. Un agente revisará tu consulta a la brevedad.", false); }
+        else { appendMsg(t().fallbackAck, false); }
       })
       .catch(function() {
         sendBtn.disabled = false;
         hideTyping();
-        appendMsg("Mensaje enviado. Nuestro equipo lo revisará.", false);
+        appendMsg(t().fallbackNet, false);
       });
     }
 
@@ -450,14 +509,13 @@
               });
               if (isTypingState) {
                 hideTypingDOM();
-                var t = document.createElement("div");
-                t.id = "isw-typing-indicator";
-                t.className = "isw-typing";
-                t.setAttribute("style", "display:flex!important;align-items:center!important;gap:4px!important;padding:6px 12px!important;background:#132240!important;border:1px solid rgba(196,174,112,.2)!important;border-radius:10px!important;width:fit-content!important;align-self:flex-start!important;margin:2px 0 6px 0!important");
-                t.innerHTML = "<span style='width:5px;height:5px;background:#C4AE70;border-radius:50%;display:inline-block;animation:waWave 1.3s infinite ease-in-out'></span>"
+                var tEl = document.getElementById("isw-typing-indicator");
+                tEl.className = "isw-typing";
+                tEl.setAttribute("style", "display:flex!important;align-items:center!important;gap:4px!important;padding:6px 12px!important;background:#132240!important;border:1px solid rgba(196,174,112,.2)!important;border-radius:10px!important;width:fit-content!important;align-self:flex-start!important;margin:2px 0 6px 0!important");
+                tEl.innerHTML = "<span style='width:5px;height:5px;background:#C4AE70;border-radius:50%;display:inline-block;animation:waWave 1.3s infinite ease-in-out'></span>"
                   + "<span style='width:5px;height:5px;background:#C4AE70;border-radius:50%;display:inline-block;animation:waWave 1.3s infinite ease-in-out;animation-delay:0.2s'></span>"
                   + "<span style='width:5px;height:5px;background:#C4AE70;border-radius:50%;display:inline-block;animation:waWave 1.3s infinite ease-in-out;animation-delay:0.4s'></span>";
-                chatBody.appendChild(t);
+                chatBody.appendChild(tEl);
                 chatBody.scrollTop = chatBody.scrollHeight;
               }
               if (!modal.classList.contains("isw-open")) {
@@ -481,7 +539,7 @@
     function renderWelcomeIfEmpty() {
       if (chatBody.querySelectorAll(".isw-msg").length === 0) {
         var cleanProd = (productName || "INSIDER").toUpperCase();
-        appendMsg("¡Hola! 👋 Te doy la bienvenida al soporte de **" + cleanProd + "**.\n\n¿En qué te puedo ayudar hoy? Selecciona una opción rápida a continuación o escribe tu consulta.", false);
+        appendMsg(t().welcomeMsg(cleanProd), false);
       }
     }
 
@@ -519,6 +577,54 @@
     if (closeBtn) closeBtn.addEventListener("click", closeModal);
   }
 
+  // ── Actualización Dinámica de Idioma ──────────────────────────────────────
+  function applyWidgetTranslations() {
+    var cur = t();
+    var suiteHdr = document.getElementById("isw-suite-hdr");
+    if (suiteHdr) suiteHdr.textContent = cur.suiteLabel;
+
+    var suiteBtn = document.querySelector("#isw-suite-root .isw-btn");
+    if (suiteBtn) suiteBtn.setAttribute("aria-label", cur.suiteLabel);
+
+    var supLbl = document.getElementById("isw-sup-label");
+    if (supLbl) supLbl.textContent = cur.supportLabel;
+
+    var supTitle = document.getElementById("isw-sup-modal-title");
+    if (supTitle) supTitle.textContent = cur.supportTitle;
+
+    var productName = (CURRENT_PID || "").replace("insider-", "").toUpperCase();
+    var supSub = document.getElementById("isw-sup-modal-sub");
+    if (supSub) supSub.textContent = cur.supportSub + productName;
+
+    var aiBadge = document.getElementById("isw-sup-ai-badge");
+    if (aiBadge) aiBadge.textContent = cur.aiActive;
+
+    var resTitle = document.getElementById("isw-resume-title");
+    if (resTitle) resTitle.textContent = cur.resumeTitle;
+
+    var resSub = document.getElementById("isw-resume-sub");
+    if (resSub) resSub.textContent = cur.resumeSub;
+
+    var resYes = document.getElementById("isw-resume-yes");
+    if (resYes) resYes.textContent = cur.resumeYes;
+
+    var resNo = document.getElementById("isw-resume-no");
+    if (resNo) resNo.textContent = cur.resumeNo;
+
+    var inputEl = document.getElementById("isw-input");
+    if (inputEl) inputEl.placeholder = cur.inputPlaceholder;
+
+    var sendBtn = document.getElementById("isw-send");
+    if (sendBtn) sendBtn.textContent = cur.sendBtn;
+  }
+
+  window.addEventListener("storage", function(e) {
+    if (e.key === "insider:lang" && (e.newValue === "es" || e.newValue === "en")) {
+      LANG = e.newValue;
+      applyWidgetTranslations();
+    }
+  });
+
   // ── Productos fallback ─────────────────────────────────────────────────────
   var FALLBACK = [
     { pid: "insider-suite",    name: "Insider Suite",    activate: "https://auth.insider-mail.com/suite",       available: true, theme: "gold"  },
@@ -530,13 +636,6 @@
     { pid: "insider-ads",      name: "Insider Ads",      activate: "https://ads.insider-mail.com/",           available: true, theme: "gold"  },
     { pid: "insider-ship",     name: "Ship n Cargo",     activate: "https://insider-mail.com/ship/",          available: true, theme: "navy"  }
   ];
-
-  // ── Banner promocional de biometría en todos los servicios ─────────────────
-  var CAMPAIGN_END_TIMESTAMP = 1786740782000; // 7 días exactamente desde hoy (14 de Agosto de 2026)
-
-  function renderPasskeyAnnouncementBanner() {
-    return; // Passkey/Biometría trasladado exclusivamente a Configuración Avanzada modal
-  }
 
   // ── 1. Renderizar widgets ─────────────────────
   try { renderSupport(CURRENT_PID, null); } catch(e) { console.error("[isw] support error:", e); }
