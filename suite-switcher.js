@@ -627,7 +627,6 @@
 
   // ── Productos fallback ─────────────────────────────────────────────────────
   var FALLBACK = [
-    { pid: "insider-suite",    name: "Insider Suite",    activate: "https://auth.insider-mail.com/suite",       available: true, theme: "gold"  },
     { pid: "insider-call",     name: "Insider Call",     activate: "https://call.insider-mail.com",             available: true, theme: "navy"  },
     { pid: "insider-receipt",  name: "Insider Receipts", activate: "https://receipts.insider-mail.com/hub",     available: true, theme: "amber" },
     { pid: "insider-invoices", name: "Insider Invoices", activate: "https://invoices.insider-mail.com",         available: true, theme: "navy"  },
@@ -640,7 +639,7 @@
   // ── 1. Renderizar widgets ─────────────────────
   try { renderSupport(CURRENT_PID, null); } catch(e) { console.error("[isw] support error:", e); }
   try {
-    var fallbackProducts = FALLBACK.filter(function(p) { return p.pid !== CURRENT_PID; });
+    var fallbackProducts = FALLBACK.filter(function(p) { return p.pid !== CURRENT_PID && p.pid !== "insider-suite"; });
     renderSuite(fallbackProducts, null);
     if (localStorage.getItem("insider:hide_suite_widget") === "true") {
       var suiteRoot = document.getElementById("isw-suite-root");
