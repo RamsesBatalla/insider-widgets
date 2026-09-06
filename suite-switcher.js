@@ -68,6 +68,7 @@
         "insider-receipt": ["📄 Duda con lectura de recibo","💳 Problema de facturación","🏢 Configuración de empresa / merchant","💬 Hablar con soporte humano"],
         "insider-chat":    ["💬 Problema enviando WhatsApp / SMS","📥 Asignación de inbox","⚙️ Configuración de canal","💬 Hablar con soporte humano"],
         "insider-iron":    ["⚙️ Incidencia técnica de sistema","📷 Registro de fotos","📋 Plan de mantenimiento","💬 Hablar con soporte humano"],
+        "insider-cards":   ["💳 Problema con tarjeta digital o QR","⚙️ Personalización de perfil o enlaces","📱 Lectura NFC / compartir contacto","💬 Hablar con soporte humano"],
         "default":         ["❓ Pregunta general","🐞 Reportar una incidencia / error","💬 Hablar con soporte humano"]
       }
     },
@@ -94,6 +95,7 @@
         "insider-receipt": ["📄 Receipt reading inquiry","💳 Billing issue","🏢 Merchant / company configuration","💬 Speak with human support"],
         "insider-chat":    ["💬 WhatsApp / SMS sending issue","📥 Inbox assignment","⚙️ Channel setup","💬 Speak with human support"],
         "insider-iron":    ["⚙️ System technical incident","📷 Photo registry","📋 Maintenance plan","💬 Speak with human support"],
+        "insider-cards":   ["💳 Digital card or QR issue","⚙️ Profile or links customization","📱 NFC reading / contact sharing","💬 Speak with human support"],
         "default":         ["❓ General question","🐞 Report an issue / bug","💬 Speak with human support"]
       }
     }
@@ -633,7 +635,8 @@
     { pid: "insider-chat",     name: "Insider Chat",     activate: "https://chat.insider-mail.com",             available: true, theme: "navy"  },
     { pid: "insider-iron",     name: "Insider Iron",     activate: "https://iron.insider-mail.com/hub",         available: true, theme: "amber" },
     { pid: "insider-ads",      name: "Insider Ads",      activate: "https://ads.insider-mail.com/",           available: true, theme: "gold"  },
-    { pid: "insider-ship",     name: "Ship n Cargo",     activate: "https://insider-mail.com/ship/",          available: true, theme: "navy"  }
+    { pid: "insider-ship",     name: "Ship n Cargo",     activate: "https://insider-mail.com/ship/",          available: true, theme: "navy"  },
+    { pid: "insider-cards",    name: "Insider Cards",    activate: "https://cards.insiderops.us/",            available: true, theme: "navy"  }
   ];
 
   // ── 1. Renderizar widgets ─────────────────────
