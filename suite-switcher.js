@@ -313,73 +313,99 @@
       + '<span id="isw-sup-label">' + curI18n.supportLabel + '</span>';
     root.appendChild(toggleBtn);
 
-    var modal = document.createElement("div");
-    modal.className = "isw-sup-modal";
-    modal.innerHTML = '<div class="isw-sup-title">'
-      + '<span id="isw-sup-modal-title">' + curI18n.supportTitle + '</span>'
-      + '<button class="isw-sup-close">✕</button>'
-      + '</div>'
-      + '<div class="isw-sup-sub">'
-      + '<span id="isw-sup-modal-sub">' + curI18n.supportSub + productName + '</span>'
-      + '<span id="isw-sup-ai-badge" style="color:#34D399;font-weight:700">' + curI18n.aiActive + '</span>'
-      + '</div>'
-      + '<div class="isw-resume-card" id="isw-resume-card" style="display:none;padding:20px 14px;background:#132240;border:1px solid rgba(196,174,112,.3);border-radius:12px;margin:12px 0;text-align:center;color:#E8EEFF">'
-      + '<div id="isw-resume-title" style="font-size:15px;font-weight:700;margin-bottom:6px">' + curI18n.resumeTitle + '</div>'
-      + '<div id="isw-resume-sub" style="font-size:13px;color:#94A3B8;margin-bottom:16px;line-height:1.4">' + curI18n.resumeSub + '</div>'
-      + '<div style="display:flex;flex-direction:column;gap:8px">'
-      + '<button class="isw-btn-resume" id="isw-resume-yes" style="width:100%;padding:11px;background:#C4AE70;color:#091224;border:0;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">' + curI18n.resumeYes + '</button>'
-      + '<button class="isw-btn-new" id="isw-resume-no" style="width:100%;padding:11px;background:transparent;color:#94A3B8;border:1px solid rgba(148,163,184,.3);border-radius:8px;font-size:13px;cursor:pointer">' + curI18n.resumeNo + '</button>'
-      + '</div></div>'
-      + '<div class="isw-chat-body" id="isw-chat-body"></div>'
-      + '<div class="isw-footer" id="isw-footer">'
-      + '<div class="isw-opts" id="isw-opts"></div>'
-      + '<div class="isw-input-row" id="isw-input-row">'
-      + '<textarea class="isw-textarea" id="isw-input" placeholder="' + curI18n.inputPlaceholder + '"></textarea>'
-      + '<button class="isw-send" id="isw-send">' + curI18n.sendBtn + '</button>'
-      + '</div></div>';
-    document.body.appendChild(modal);
-
-    var chatBody = modal.querySelector("#isw-chat-body");
-    var optsContainer = modal.querySelector("#isw-opts");
-    var inputEl = modal.querySelector("#isw-input");
-    var sendBtn = modal.querySelector("#isw-send");
-    var resumeCard = modal.querySelector("#isw-resume-card");
-    var footerEl = modal.querySelector("#isw-footer");
-    var resumeYesBtn = modal.querySelector("#isw-resume-yes");
-    var resumeNoBtn = modal.querySelector("#isw-resume-no");
+    var modal = null;
+    var chatBody = null, optsContainer = null, inputEl = null, sendBtn = null;
+    var resumeCard = null, footerEl = null, resumeYesBtn = null, resumeNoBtn = null;
     var unreadCount = 0;
     var isTypingState = false;
+    var pollingTimer = null;
+    var lastRenderedMsgIds = "";
 
-    if (resumeYesBtn) {
-      resumeYesBtn.addEventListener("click", function() {
-        caseDecided = true;
-        if (resumeCard) resumeCard.style.display = "none";
-        if (chatBody) chatBody.style.display = "flex";
-        if (footerEl) footerEl.style.display = "block";
-        touchSession();
-        pollMessages();
-        startPolling();
-      });
-    }
+    function ensureModal() {
+      if (modal) return;
+      modal = document.createElement("div");
+      modal.className = "isw-sup-modal";
+      modal.innerHTML = '<div class="isw-sup-title">'
+        + '<span id="isw-sup-modal-title">' + t().supportTitle + '</span>'
+        + '<button class="isw-sup-close">✕</button>'
+        + '</div>'
+        + '<div class="isw-sup-sub">'
+        + '<span id="isw-sup-modal-sub">' + t().supportSub + productName + '</span>'
+        + '<span id="isw-sup-ai-badge" style="color:#34D399;font-weight:700">' + t().aiActive + '</span>'
+        + '</div>'
+        + '<div class="isw-resume-card" id="isw-resume-card" style="display:none;padding:20px 14px;background:#132240;border:1px solid rgba(196,174,112,.3);border-radius:12px;margin:12px 0;text-align:center;color:#E8EEFF">'
+        + '<div id="isw-resume-title" style="font-size:15px;font-weight:700;margin-bottom:6px">' + t().resumeTitle + '</div>'
+        + '<div id="isw-resume-sub" style="font-size:13px;color:#94A3B8;margin-bottom:16px;line-height:1.4">' + t().resumeSub + '</div>'
+        + '<div style="display:flex;flex-direction:column;gap:8px">'
+        + '<button class="isw-btn-resume" id="isw-resume-yes" style="width:100%;padding:11px;background:#C4AE70;color:#091224;border:0;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">' + t().resumeYes + '</button>'
+        + '<button class="isw-btn-new" id="isw-resume-no" style="width:100%;padding:11px;background:transparent;color:#94A3B8;border:1px solid rgba(148,163,184,.3);border-radius:8px;font-size:13px;cursor:pointer">' + t().resumeNo + '</button>'
+        + '</div></div>'
+        + '<div class="isw-chat-body" id="isw-chat-body"></div>'
+        + '<div class="isw-footer" id="isw-footer">'
+        + '<div class="isw-opts" id="isw-opts"></div>'
+        + '<div class="isw-input-row" id="isw-input-row">'
+        + '<textarea class="isw-textarea" id="isw-input" placeholder="' + t().inputPlaceholder + '"></textarea>'
+        + '<button class="isw-send" id="isw-send">' + t().sendBtn + '</button>'
+        + '</div></div>';
+      document.body.appendChild(modal);
 
-    if (resumeNoBtn) {
-      resumeNoBtn.addEventListener("click", function() {
-        caseDecided = true;
-        hasSavedCase = false;
-        supSessionId = null;
-        supSessionAt = 0;
-        try {
-          localStorage.removeItem("insider_sup_session_id");
-          localStorage.removeItem("insider_sup_session_at");
-        } catch(_) {}
-        chatBody.innerHTML = "";
-        lastRenderedMsgIds = "";
-        if (resumeCard) resumeCard.style.display = "none";
-        if (chatBody) chatBody.style.display = "flex";
-        if (footerEl) footerEl.style.display = "block";
-        renderWelcomeIfEmpty();
-        renderQuickOpts();
+      chatBody = modal.querySelector("#isw-chat-body");
+      optsContainer = modal.querySelector("#isw-opts");
+      inputEl = modal.querySelector("#isw-input");
+      sendBtn = modal.querySelector("#isw-send");
+      resumeCard = modal.querySelector("#isw-resume-card");
+      footerEl = modal.querySelector("#isw-footer");
+      resumeYesBtn = modal.querySelector("#isw-resume-yes");
+      resumeNoBtn = modal.querySelector("#isw-resume-no");
+
+      if (resumeYesBtn) {
+        resumeYesBtn.addEventListener("click", function() {
+          caseDecided = true;
+          if (resumeCard) resumeCard.style.display = "none";
+          if (chatBody) chatBody.style.display = "flex";
+          if (footerEl) footerEl.style.display = "block";
+          touchSession();
+          pollMessages();
+          startPolling();
+        });
+      }
+
+      if (resumeNoBtn) {
+        resumeNoBtn.addEventListener("click", function() {
+          caseDecided = true;
+          hasSavedCase = false;
+          supSessionId = null;
+          supSessionAt = 0;
+          try {
+            localStorage.removeItem("insider_sup_session_id");
+            localStorage.removeItem("insider_sup_session_at");
+          } catch(_) {}
+          chatBody.innerHTML = "";
+          lastRenderedMsgIds = "";
+          if (resumeCard) resumeCard.style.display = "none";
+          if (chatBody) chatBody.style.display = "flex";
+          if (footerEl) footerEl.style.display = "block";
+          renderWelcomeIfEmpty();
+          renderQuickOpts();
+        });
+      }
+
+      sendBtn.addEventListener("click", function() {
+        var txt = inputEl.value.trim();
+        if (!txt) return;
+        inputEl.value = "";
+        sendUserMsg(txt);
       });
+
+      inputEl.addEventListener("keydown", function(e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendBtn.click();
+        }
+      });
+
+      var closeBtn = modal.querySelector(".isw-sup-close");
+      if (closeBtn) closeBtn.addEventListener("click", closeModal);
     }
 
     function getLabel() { return document.getElementById("isw-sup-label"); }
@@ -488,25 +514,8 @@
       });
     }
 
-    sendBtn.addEventListener("click", function() {
-      var txt = inputEl.value.trim();
-      if (!txt) return;
-      inputEl.value = "";
-      sendUserMsg(txt);
-    });
-
-    inputEl.addEventListener("keydown", function(e) {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        sendBtn.click();
-      }
-    });
-
-    var pollingTimer = null;
-    var lastRenderedMsgIds = "";
-
     function pollMessages() {
-      if (!supSessionId) return;
+      if (!supSessionId || !modal) return;
       fetch(AUTH_ORIGIN + "/api/support/messages?session_id=" + encodeURIComponent(supSessionId))
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(d) {
@@ -551,6 +560,7 @@
     }
 
     function renderWelcomeIfEmpty() {
+      if (!chatBody) return;
       if (chatBody.querySelectorAll(".isw-msg").length === 0) {
         var cleanProd = (productName || "INSIDER").toUpperCase();
         appendMsg(t().welcomeMsg(cleanProd), false);
@@ -558,6 +568,7 @@
     }
 
     function openModal() {
+      ensureModal();
       modal.classList.add("isw-open");
       toggleBtn.style.display = "none";
       unreadCount = 0;
@@ -582,13 +593,11 @@
     }
 
     function closeModal() {
-      modal.classList.remove("isw-open");
+      if (modal) modal.classList.remove("isw-open");
       toggleBtn.style.display = "";
     }
 
     toggleBtn.addEventListener("click", openModal);
-    var closeBtn = modal.querySelector(".isw-sup-close");
-    if (closeBtn) closeBtn.addEventListener("click", closeModal);
   }
 
   // ── Actualización Dinámica de Idioma ──────────────────────────────────────
