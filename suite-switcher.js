@@ -403,12 +403,24 @@
       return esc;
     }
 
+    function scrollToBottom() {
+      if (window.requestAnimationFrame) {
+        window.requestAnimationFrame(function() {
+          chatBody.scrollTop = chatBody.scrollHeight;
+        });
+      } else {
+        setTimeout(function() {
+          chatBody.scrollTop = chatBody.scrollHeight;
+        }, 0);
+      }
+    }
+
     function appendMsg(text, isUser) {
       var msg = document.createElement("div");
       msg.className = "isw-msg " + (isUser ? "isw-msg-out" : "isw-msg-in");
       msg.innerHTML = isUser ? text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>") : parseMarkdown(text);
       chatBody.appendChild(msg);
-      chatBody.scrollTop = chatBody.scrollHeight;
+      scrollToBottom();
     }
 
     function showTyping() {
@@ -422,7 +434,7 @@
         + "<span style='width:5px;height:5px;background:#C4AE70;border-radius:50%;display:inline-block;animation:waWave 1.3s infinite ease-in-out;animation-delay:0.2s'></span>"
         + "<span style='width:5px;height:5px;background:#C4AE70;border-radius:50%;display:inline-block;animation:waWave 1.3s infinite ease-in-out;animation-delay:0.4s'></span>";
       chatBody.appendChild(tEl);
-      chatBody.scrollTop = chatBody.scrollHeight;
+      scrollToBottom();
     }
 
     function hideTypingDOM() {
@@ -518,7 +530,7 @@
                   + "<span style='width:5px;height:5px;background:#C4AE70;border-radius:50%;display:inline-block;animation:waWave 1.3s infinite ease-in-out;animation-delay:0.2s'></span>"
                   + "<span style='width:5px;height:5px;background:#C4AE70;border-radius:50%;display:inline-block;animation:waWave 1.3s infinite ease-in-out;animation-delay:0.4s'></span>";
                 chatBody.appendChild(tEl);
-                chatBody.scrollTop = chatBody.scrollHeight;
+                scrollToBottom();
               }
               if (!modal.classList.contains("isw-open")) {
                 var newCount = d.messages.length - existingCount;
