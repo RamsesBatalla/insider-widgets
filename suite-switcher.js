@@ -639,40 +639,58 @@
     { pid: "insider-cards",    name: "Insider Cards",    activate: "https://cards.insiderops.us/",            available: true, theme: "navy"  }
   ];
 
-  // ── 1. Renderizar widgets ─────────────────────
-  try { renderSupport(CURRENT_PID, null); } catch(e) { console.error("[isw] support error:", e); }
-  try {
-    var fallbackProducts = FALLBACK.filter(function(p) { return p.pid !== CURRENT_PID && p.pid !== "insider-suite"; });
-    renderSuite(fallbackProducts, null);
-    if (localStorage.getItem("insider:hide_suite_widget") === "true") {
-      var suiteRoot = document.getElementById("isw-suite-root");
-      if (suiteRoot) suiteRoot.style.display = "none";
-    }
-  } catch(e) { console.error("[isw] suite error:", e); }
+  function boot() {
+    // ── 1. Renderizar widgets ─────────────────────
+    try { renderSupport(CURRENT_PID, null); } catch(e) { console.error("[isw] support error:", e); }
+    try {
+      var fallbackProducts = FALLBACK.filter(function(p) { return p.pid !== CURRENT_PID && p.pid !== "insider-suite"; });
+      renderSuite(fallbackProducts, null);
+      if (localStorage.getItem("insider:hide_suite_widget") === "true") {
+        var suiteRoot = document.getElementById("isw-suite-root");
+        if (suiteRoot) suiteRoot.style.display = "none";
+      }
+    } catch(e) { console.error("[isw] suite error:", e); }
 
-  // ── 2. Enriquecer con datos reales de sesión ───────────────────────────────
-  resolveSession(function(licenses, token, hasWebAuthn) {
-    if (hasWebAuthn) {
-      try {
-        localStorage.setItem("isw_passkey_this_device_enrolled", "true");
-        localStorage.setItem("passkey_enrolled_global", "true");
-        localStorage.setItem("passkey_enrolled_" + location.host, "true");
-      } catch(_) {}
+    // ── 2. Enriquecer con datos reales de sesión ───────────────────────────────
+    resolveSession(function(licenses, token, hasWebAuthn) {
+      if (hasWebAuthn) {
+        try {
+          localStorage.setItem("isw_passkey_this_device_enrolled", "true");
+          localStorage.setItem("passkey_enrolled_global", "true");
+          localStorage.setItem("passkey_enrolled_" + location.host, "true");
+        } catch(_) {}
+      }
+      if (!token && !licenses) return;
+      if (token) {
+        var items = document.querySelectorAll("#isw-suite-root .isw-item");
+        items.forEach(function(item) {
+          var pid = item.getAttribute("data-pid");
+          if (pid) {
+            item.onclick = function() {
+              var p = FALLBACK.find(function(x) { return x.pid === pid; });
+              if (!p) return;
+              location.href = p.activate + (p.activate.indexOf("?") > -1 ? "&" : "?") + "token=" + token;
+            };
+          }
+        });
+      }
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function() {
+      if (window.requestIdleCallback) {
+        window.requestIdleCallback(boot);
+      } else {
+        setTimeout(boot, 1);
+      }
+    });
+  } else {
+    if (window.requestIdleCallback) {
+      window.requestIdleCallback(boot);
+    } else {
+      setTimeout(boot, 1);
     }
-    if (!token && !licenses) return;
-    if (token) {
-      var items = document.querySelectorAll("#isw-suite-root .isw-item");
-      items.forEach(function(item) {
-        var pid = item.getAttribute("data-pid");
-        if (pid) {
-          item.onclick = function() {
-            var p = FALLBACK.find(function(x) { return x.pid === pid; });
-            if (!p) return;
-            location.href = p.activate + (p.activate.indexOf("?") > -1 ? "&" : "?") + "token=" + token;
-          };
-        }
-      });
-    }
-  });
+  }
 
 })();
