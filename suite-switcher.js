@@ -242,9 +242,9 @@
       item.setAttribute("data-pid", p.pid);
       item.innerHTML = miniLogo(p) + "<span>" + p.name + "</span>";
       item.addEventListener("click", function() {
-        var url = p.activate;
-        if (token) url += (url.indexOf("?") > -1 ? "&" : "?") + "token=" + token;
-        location.href = url;
+        var cleanUrl = (p.activate || "").split("?")[0];
+        if (token) cleanUrl += "?token=" + encodeURIComponent(token);
+        location.href = cleanUrl;
       });
       panel.appendChild(item);
     });
@@ -690,7 +690,9 @@
             item.onclick = function() {
               var p = FALLBACK.find(function(x) { return x.pid === pid; });
               if (!p) return;
-              location.href = p.activate + (p.activate.indexOf("?") > -1 ? "&" : "?") + "token=" + token;
+              var cleanUrl = (p.activate || "").split("?")[0];
+              if (token) cleanUrl += "?token=" + encodeURIComponent(token);
+              location.href = cleanUrl;
             };
           }
         });
